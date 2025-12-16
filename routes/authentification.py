@@ -8,7 +8,7 @@ from email_utils import send_activation_email, send_email
 from urllib.parse import quote
 from datetime import datetime, timedelta
 from auth_utils import generate_activation_token
-from signup import get_db_connection, app
+from app import get_db_connection, app
 
 auth_bp = Blueprint('auth', __name__)
 

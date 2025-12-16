@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, Blueprint
-from signup import get_db_connection, app
+from app import get_db_connection, app
 
 manage_site_codes_bp = Blueprint('manage_site_codes', __name__)
 

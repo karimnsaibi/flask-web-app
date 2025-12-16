@@ -19,17 +19,25 @@ def init_db():
         password TEXT NOT NULL
     )
     ''')
-    # GSM site table
+    
+    # Site table (formerly gsm_site but utilizing the structure used in manage_sites.py)
     cur.execute('''
-    CREATE TABLE gsm_site (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nom_site TEXT NOT NULL,
-    latitude REAL,
-    longitude REAL,
-    region TEXT,
-    gouvernorat TEXT,
-    technologie TEXT CHECK(technologie IN ('2G', '3G', '4G'))
-    )''')
+    CREATE TABLE site (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        region TEXT NOT NULL,
+        code TEXT NOT NULL,
+        delegation TEXT NOT NULL,
+        site_name TEXT NOT NULL,
+        x TEXT NOT NULL,
+        y TEXT NOT NULL,
+        hba TEXT NOT NULL,
+        supplier TEXT NOT NULL,
+        access TEXT NOT NULL,
+        antenna TEXT NOT NULL,
+        surface TEXT NOT NULL,
+        UNIQUE(region,code,delegation)
+    ) ''')
+
     # Antenna config (physical + logical parameters)
     cur.execute('''
     CREATE TABLE antenna_config (
@@ -40,7 +48,7 @@ def init_db():
     pire REAL,
     tilt_mecanique REAL,
     tilt_electrique REAL,
-    FOREIGN KEY(site_id) REFERENCES gsm_site(id) ON DELETE CASCADE
+    FOREIGN KEY(site_id) REFERENCES site(id) ON DELETE CASCADE
     )''')
     # KPI data
     cur.execute('''
@@ -54,7 +62,7 @@ def init_db():
     trafic_voix_erlang REAL,
     trafic_data_go REAL,
     trafic_volte_go REAL,
-    FOREIGN KEY(site_id) REFERENCES gsm_site(id) ON DELETE CASCADE
+    FOREIGN KEY(site_id) REFERENCES site(id) ON DELETE CASCADE
     )''')
     # Indexes
     cur.execute('''
@@ -63,23 +71,6 @@ def init_db():
     cur.execute('''
     CREATE INDEX idx_antenna_site ON antenna_config(site_id)
     ''')
-    
-    cur.execute('''
-  CREATE TABLE site (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  region TEXT NOT NULL,
-  code TEXT NOT NULL,
-  delegation TEXT NOT NULL,
-  site_name TEXT NOT NULL,
-  x TEXT NOT NULL,
-  y TEXT NOT NULL,
-  hba TEXT NOT NULL,
-  supplier TEXT NOT NULL,
-  access TEXT NOT NULL,
-  antenna TEXT NOT NULL,
-  surface TEXT NOT NULL,
-  UNIQUE(region,code,delegation)
-  ) ''')
     
     # Create site_code_pools table
     cur.execute('''

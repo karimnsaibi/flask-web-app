@@ -68,8 +68,10 @@
             <div x-show="open" class="absolute left-0 mt-2 origin-top bg-white border border-gray-200 rounded-md shadow-lg py-2 w-52 z-10 text-left">
               {% if session.profile in ['engineer', 'administrator'] %}
                 <a href="/bi" class="block px-4 py-2 hover:bg-gray-100">BI Dashboard</a>
+                <a href="/kpi/add" class="block px-4 py-2 hover:bg-gray-100">Log KPI Data</a>
               {% else %}
                 <span class="block px-4 py-2 text-gray-400 cursor-not-allowed">BI Dashboard</span>
+                <span class="block px-4 py-2 text-gray-400 cursor-not-allowed">Log KPI Data</span>
               {% endif %}
             </div>
           </div>

@@ -26,6 +26,9 @@ app.register_blueprint(manage_site_bp)
 from routes.manage_site_codes import manage_site_codes_bp
 app.register_blueprint(manage_site_codes_bp)
 
+from routes.kpi_routes import kpi_bp
+app.register_blueprint(kpi_bp)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
