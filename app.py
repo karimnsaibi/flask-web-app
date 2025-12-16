@@ -7,15 +7,12 @@ from datetime import datetime, timedelta
 from email_utils import send_activation_email, send_email
 from urllib.parse import quote
 from datetime import datetime, timedelta
-from auth_utils import generate_activation_token
+
 
 app = Flask(__name__)
 
 # connect database
-def get_db_connection():
-    conn = sqlite3.connect('your_database.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+app.secret_key = 'tunisie_telecom_dashboard'
 
 from routes.authentification import auth_bp
 app.register_blueprint(auth_bp)

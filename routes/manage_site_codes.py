@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, Blueprint
-from app import get_db_connection, app
+from db import get_db_connection
 
 manage_site_codes_bp = Blueprint('manage_site_codes', __name__)
 
@@ -53,11 +53,11 @@ def edit_code_pools(conn, region, updates):
     conn.commit()
     return True, "Selected code pools updated."
 
-@app.route('/manage-site-codes')
+@manage_site_codes_bp.route('/manage-site-codes')
 def manage_site_codes():
     return render_template('manage_site_codes.html')
 
-@app.route('/manage-site-codes/add', methods=['POST'])
+@manage_site_codes_bp.route('/manage-site-codes/add', methods=['POST'])
 def add_site_code_pool():
     data = request.get_json()
     region = data.get('region')
@@ -70,7 +70,7 @@ def add_site_code_pool():
     conn.close()
     return jsonify(success=success, message=message)
 
-@app.route('/manage-site-codes/exploit')
+@manage_site_codes_bp.route('/manage-site-codes/exploit')
 def exploit_site_code_pools():
     region = request.args.get('region')
     if not region:
@@ -80,28 +80,28 @@ def exploit_site_code_pools():
     conn.close()
     return jsonify(success=True, code_pools=code_pools)
 
-@app.route('/manage-site-codes/delete', methods=['POST'])
+@manage_site_codes_bp.route('/manage-site-codes/delete', methods=['POST'])
 def delete_site_code_pools():
     data = request.get_json()
     region = data.get('region')
     pools = data.get('pools', [])
     if not region or not pools:
         flash("Invalid input data.", "error")
-        return redirect(url_for('manage_site_codes'))
+        return redirect(url_for('manage_site_codes.manage_site_codes'))
     conn = get_db_connection()
     success, message = delete_code_pools(conn, region, pools)
     conn.close()
     flash(message, "success" if success else "error")
-    return redirect(url_for('manage_site_codes'))
+    return redirect(url_for('manage_site_codes.manage_site_codes'))
 
-@app.route('/manage-site-codes/edit', methods=['POST'])
+@manage_site_codes_bp.route('/manage-site-codes/edit', methods=['POST'])
 def edit_site_code_pools():
     data = request.get_json()
     region = data.get('region')
     updates = data.get('updates', [])
     if not region or not updates:
         flash("Invalid input data.", "error")
-        return redirect(url_for('manage_site_codes'))
+        return redirect(url_for('manage_site_codes.manage_site_codes'))
     conn = get_db_connection()
     # Each update should have old_start, old_end, start_code, end_code
     # But frontend currently sends old_start only as index, so we need to adjust frontend or handle here
@@ -109,4 +109,4 @@ def edit_site_code_pools():
     success, message = edit_code_pools(conn, region, updates)
     conn.close()
     flash(message if success else "Error updating selected rows", "success" if success else "error")
-    return redirect(url_for('manage_site_codes'))
+    return redirect(url_for('manage_site_codes.manage_site_codes'))

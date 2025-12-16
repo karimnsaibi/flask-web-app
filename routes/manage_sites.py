@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, Blueprint
-from app import get_db_connection, app
+from db import get_db_connection
 
 manage_site_bp = Blueprint('manage_site', __name__)
 
@@ -46,7 +46,7 @@ def edit_site(conn, data):
     return True, 'Site updated successfully'
 
 # Main route
-@app.route('/manage-sites', methods=['GET', 'POST'])
+@manage_site_bp.route('/manage-sites', methods=['GET', 'POST'])
 def manage_site():
     conn = get_db_connection()
     governorates = ['Ariana','Béja','Ben Arous','Bizerte','Gabès','Gafsa',\
@@ -69,7 +69,7 @@ def manage_site():
 
         flash(message, 'success' if success else 'error')
         conn.close()
-        return redirect(url_for('manage_site'))
+        return redirect(url_for('manage_site.manage_site'))
 
     conn.close()
     return render_template('manage_sites.html', governorates=governorates)
@@ -77,7 +77,7 @@ def manage_site():
 
 
 
-@app.route('/api/site-info')
+@manage_site_bp.route('/api/site-info')
 def site_info():
     region = request.args.get('region')
     conn = get_db_connection()

@@ -8,21 +8,21 @@ from email_utils import send_activation_email, send_email
 from urllib.parse import quote
 from datetime import datetime, timedelta
 from auth_utils import generate_activation_token
-from app import get_db_connection, app
+from db import get_db_connection
 
 auth_bp = Blueprint('auth', __name__)
 
-@app.route('/')
+@auth_bp.route('/')
 def home():
     return render_template('login.html')
 
-@app.route('/signup')
+@auth_bp.route('/signup')
 def signup():
     return render_template('signup.html')
 
-app.secret_key = 'tunisie_telecom_dashboard'
 
-@app.route('/activate/<token>')  # Ensure this matches your generated link
+
+@auth_bp.route('/activate/<token>')  # Ensure this matches your generated link
 def activate_account(token):
     conn = get_db_connection()
     user = conn.execute(
@@ -33,12 +33,12 @@ def activate_account(token):
     if not user:
         conn.close()
         flash("Invalid activation link", "error")
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     if datetime.now() > datetime.fromisoformat(user['token_expiry']):
         conn.close()
         flash("Activation link has expired", "error")
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     # Activate account
     conn.execute('''
@@ -50,11 +50,11 @@ def activate_account(token):
     conn.close()
 
     flash("Account activated successfully!", "success")
-    return redirect(url_for('login'))
+    return redirect(url_for('auth.login'))
 
 
 # Sign up route
-@app.route('/register', methods=['POST', 'GET'])
+@auth_bp.route('/register', methods=['POST', 'GET'])
 def register():
     if request.method == 'POST':
         # Get form data
@@ -72,7 +72,7 @@ def register():
         #     email = valid.email  # Normalized email
         # except EmailNotValidError as e:
         #     flash(f"Invalid email address: {str(e)}", "error")
-        #     return redirect(url_for('signup'))
+        #     return redirect(url_for('auth.signup'))
 
         # 2. Check if email/user_id already exists
         conn = get_db_connection()
@@ -91,11 +91,11 @@ def register():
             #     flash("User ID already taken", "error")
             flash("User ID already taken", "error")
             conn.close()
-            return redirect(url_for('signup'))
+            return redirect(url_for('auth.signup'))
         if password != password2:
             flash("Passwords do not match", "error")
             conn.close()
-            return redirect(url_for('signup'))
+            return redirect(url_for('auth.signup'))
         hashed_pw = generate_password_hash(password)
         
         # # Generate activation token
@@ -123,11 +123,11 @@ def register():
         ''', (name, user_id, profile, hashed_pw))
         conn.commit()
         flash("Registration successful!", "success")
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     return render_template('signup.html')
 
 # Log in route
-@app.route('/login', methods=['GET', 'POST'])
+@auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
         return render_template('login.html')
@@ -145,11 +145,11 @@ def login():
     if user:
         # if not user['is_active']:
         #     flash("Account not activated. Please check your email.", "error")
-        #     return redirect(url_for('home'))
+        #     return redirect(url_for('auth.home'))
         if check_password_hash(user['password'], password):
             session['user_id'] = user['id']
             session['profile'] = user['profile']
-            return redirect(url_for('main'))
+            return redirect(url_for('auth.main'))
             # # Generate 6-digit code
             # import random
             # code = f"{random.randint(100000, 999999)}"
@@ -169,18 +169,18 @@ def login():
 
             # # Store user ID in session
             # session['2fa_user_id'] = user['id']
-            # return redirect(url_for('two_fa'))
+            # return redirect(url_for('auth.two_fa'))
         flash("Invalid password", "error")
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
     flash("Invalid user ID", "error")
-    return redirect(url_for('home'))
+    return redirect(url_for('auth.home'))
 
 
 # Two Factor Authentication route
-@app.route('/2fa', methods=['GET', 'POST'])
+@auth_bp.route('/2fa', methods=['GET', 'POST'])
 def two_fa():
     if '2fa_user_id' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
 
     if request.method == 'POST':
         entered_code = request.form['code']
@@ -200,7 +200,7 @@ def two_fa():
                 conn.close()
                 session.pop('2fa_user_id')
                 session['user_id'] = user_id  # Mark user as logged in
-                return redirect(url_for('main'))
+                return redirect(url_for('auth.main'))
             else:
                 flash("Invalid or expired code", "error")
         conn.close()
@@ -212,10 +212,10 @@ def two_fa():
 
 
 # Shell main page route
-@app.route('/main')
+@auth_bp.route('/main')
 def main():
     if 'user_id' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
     return render_template('main.html')
 
 
@@ -234,10 +234,10 @@ def print_all_users():
     conn.close()
 
 # Resend 2FA code route
-@app.route('/resend-2fa')
+@auth_bp.route('/resend-2fa')
 def resend_2fa():
     if '2fa_user_id' not in session:
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
 
     user_id = session['2fa_user_id']
     conn = get_db_connection()
@@ -246,7 +246,7 @@ def resend_2fa():
     if not user:
         conn.close()
         flash("Session expired. Please log in again.", "error")
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
 
     # Rate limiting: block resending if last_2fa_sent was less than 30 seconds ago
     now = datetime.now()
@@ -255,7 +255,7 @@ def resend_2fa():
         if now < last_sent + timedelta(seconds=30):
             conn.close()
             flash("Please wait before requesting a new code.", "warning")
-            return redirect(url_for('two_fa'))
+            return redirect(url_for('auth.two_fa'))
 
     # If the previous code is still valid, reuse it
     if user['twofa_expiry'] and datetime.now() < datetime.fromisoformat(user['twofa_expiry']):
@@ -280,4 +280,4 @@ def resend_2fa():
     conn.close()
 
     flash("A new verification code has been sent to your email.", "success")
-    return redirect(url_for('two_fa'))
+    return redirect(url_for('auth.two_fa'))

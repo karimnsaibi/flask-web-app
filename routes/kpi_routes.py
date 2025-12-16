@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify, Response, session
-from app import get_db_connection
+from db import get_db_connection
 import csv
 import io
 
@@ -9,14 +9,14 @@ kpi_bp = Blueprint('kpi', __name__)
 def bi_dashboard():
     if 'profile' not in session or session['profile'] not in ['engineer', 'administrator']:
         flash('Access denied', 'error')
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
     return render_template('bi_dashboard.html')
 
 @kpi_bp.route('/kpi/add', methods=['GET', 'POST'])
 def add_kpi():
     if 'profile' not in session or session['profile'] not in ['engineer', 'administrator']:
         flash('Access denied', 'error')
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
         
     conn = get_db_connection()
     if request.method == 'POST':
