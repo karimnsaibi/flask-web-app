@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}View GSM Sites{% endblock %}
+
+{% block content %}
+<div class="pt-28 pb-12 px-6 max-w-7xl mx-auto" x-data="{ search: '' }">
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-[#1b1464]">GSM Network Sites</h1>
+            <p class="text-gray-600 mt-2">Inventory of all registered base stations.</p>
+        </div>
+        <div class="flex space-x-4">
+             <div class="relative">
+                <input type="text" x-model="search" placeholder="Search sites..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                <div class="absolute left-3 top-2.5 text-gray-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+            </div>
+            <a href="/add-site" class="flex items-center space-x-2 px-4 py-2 bg-[#1b1464] text-white rounded-lg hover:bg-blue-900 transition shadow">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                <span>Add Site</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm item-center text-left">
+                <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-3">Code</th>
+                        <th class="px-6 py-3">Site Name</th>
+                        <th class="px-6 py-3">Region</th>
+                        <th class="px-6 py-3">Delegation</th>
+                        <th class="px-6 py-3">Supplier</th>
+                        <th class="px-6 py-3">Access</th>
+                        <th class="px-6 py-3 text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for site in sites %}
+                    <template x-if="search === '' || '{{ site.site_name }}'.toLowerCase().includes(search.toLowerCase()) || '{{ site.code }}'.toLowerCase().includes(search.toLowerCase())">
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-mono text-blue-600 font-bold">{{ site.code }}</td>
+                        <td class="px-6 py-4 font-medium">{{ site.site_name }}</td>
+                        <td class="px-6 py-4">{{ site.region }}</td>
+                        <td class="px-6 py-4">{{ site.delegation }}</td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium  
+                                {% if site.supplier == 'Huawei' %}bg-red-100 text-red-800{% else %}bg-blue-100 text-blue-800{% endif %}">
+                                {{ site.supplier }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4">{{ site.access }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="text-green-600 bg-green-100 px-2 py-1 rounded text-xs font-bold">Active</span>
+                        </td>
+                    </tr>
+                    </template>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if sites|length == 0 %}
+                <div class="text-center py-12 text-gray-500">No sites found. <a href="/add-site" class="text-blue-600 hover:underline">Add one now</a>.</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Site Documentation{% endblock %}
+
+{% block content %}
+<div class="pt-28 pb-12 px-6 max-w-7xl mx-auto">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-[#1b1464]">Site Data Documentation</h1>
+        <p class="text-gray-600 mt-2">Reference guide for the data fields logged in the Site Management module.</p>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 class="text-lg font-semibold text-gray-800">Field Descriptions</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm item-center text-left">
+                <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-3">Field Name</th>
+                        <th class="px-6 py-3">Data Type</th>
+                        <th class="px-6 py-3">Description</th>
+                        <th class="px-6 py-3">Example</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">Region</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Text</td>
+                        <td class="px-6 py-4">The administrative governorate where the site is located.</td>
+                        <td class="px-6 py-4 text-gray-500">Tunis, Ariana</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">Site Code</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Alphanumeric</td>
+                        <td class="px-6 py-4">Unique identifier for the GSM site.</td>
+                        <td class="px-6 py-4 text-gray-500">1234, T001</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">Delegation</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Text</td>
+                        <td class="px-6 py-4">Specific municipality or local area within the region.</td>
+                        <td class="px-6 py-4 text-gray-500">La Marsa</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">Site Name</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Text</td>
+                        <td class="px-6 py-4">Descriptive name of the site location.</td>
+                        <td class="px-6 py-4 text-gray-500">Marsa Plage</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">X / Y</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Float</td>
+                        <td class="px-6 py-4">Geographic coordinates (Lambert or GPS) for mapping.</td>
+                        <td class="px-6 py-4 text-gray-500">36.8, 10.1</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">HBA</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Float (Meters)</td>
+                        <td class="px-6 py-4">Height Above Ground (Hauteur Bas de l'Antenne).</td>
+                        <td class="px-6 py-4 text-gray-500">22.5</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">Supplier</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Text</td>
+                        <td class="px-6 py-4">Manufacturer of the reliable radio equipment.</td>
+                        <td class="px-6 py-4 text-gray-500">Huawei, Ericsson</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">Access</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Text</td>
+                        <td class="px-6 py-4">Transmission medium used (Fiber vs Microwave/FH).</td>
+                        <td class="px-6 py-4 text-gray-500">FO, FH</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">Antenna</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Text</td>
+                        <td class="px-6 py-4">Type of antenna configuration.</td>
+                        <td class="px-6 py-4 text-gray-500">MIMO, Omni</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 font-medium text-[#1b1464]">Surface</td>
+                        <td class="px-6 py-4 font-mono text-xs text-blue-600">Text</td>
+                        <td class="px-6 py-4">Location type (Rooftop vs Green field).</td>
+                        <td class="px-6 py-4 text-gray-500">Terrasse, Terrain nu</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

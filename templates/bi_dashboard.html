@@ -20,35 +20,171 @@
         </div>
     </div>
 
-    <!-- Stats Overview -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8" x-data="kpiStats()">
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Avg Call Block Rate</h3>
-            <p class="text-2xl font-bold text-gray-900 mt-2" x-text="stats.avgBlocage + '%'"></p>
+    <div x-data="advancedDashboard()">
+        <!-- Tab Navigation -->
+        <div class="flex space-x-4 border-b border-gray-200 mb-8">
+            <button @click="setMode('overview')" 
+                    :class="{'border-blue-500 text-blue-600': mode === 'overview', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': mode !== 'overview'}"
+                    class="pb-4 px-4 border-b-2 font-medium text-lg transition-colors duration-200">
+                Overview
+            </button>
+            <button @click="setMode('operational')" 
+                    :class="{'border-blue-500 text-blue-600': mode === 'operational', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': mode !== 'operational'}"
+                    class="pb-4 px-4 border-b-2 font-medium text-lg transition-colors duration-200">
+                Operational (Field)
+            </button>
+            <button @click="setMode('tactical')" 
+                    :class="{'border-blue-500 text-blue-600': mode === 'tactical', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': mode !== 'tactical'}"
+                    class="pb-4 px-4 border-b-2 font-medium text-lg transition-colors duration-200">
+                Tactical (Engineering)
+            </button>
+            <button @click="setMode('strategic')" 
+                    :class="{'border-blue-500 text-blue-600': mode === 'strategic', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': mode !== 'strategic'}"
+                    class="pb-4 px-4 border-b-2 font-medium text-lg transition-colors duration-200">
+                Strategic (Management)
+            </button>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Avg Call Drop Rate</h3>
-            <p class="text-2xl font-bold text-gray-900 mt-2" x-text="stats.avgCoupure + '%'"></p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Avg Availability</h3>
-            <p class="text-2xl font-bold text-gray-900 mt-2" x-text="stats.avgDispo + '%'"></p>
-        </div>
-        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
-            <h3 class="text-sm font-medium text-gray-500 uppercase">Total Data Traffic</h3>
-            <p class="text-2xl font-bold text-gray-900 mt-2" x-text="stats.totalData + ' TB'"></p>
-        </div>
-    </div>
 
-    <!-- Charts -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">QoS Trends (Blocage & Coupure)</h3>
-            <canvas id="qosChart"></canvas>
+        <!-- 1. OVERVIEW MODE -->
+        <div x-show="mode === 'overview'" x-transition:enter="transition ease-out duration-300">
+            <!-- Stats Overview -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-red-500">
+                    <h3 class="text-sm font-medium text-gray-500 uppercase">Avg Call Block Rate</h3>
+                    <p class="text-2xl font-bold text-gray-900 mt-2" x-text="overview.avgBlocage + '%'"></p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-yellow-500">
+                    <h3 class="text-sm font-medium text-gray-500 uppercase">Avg Call Drop Rate</h3>
+                    <p class="text-2xl font-bold text-gray-900 mt-2" x-text="overview.avgCoupure + '%'"></p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+                    <h3 class="text-sm font-medium text-gray-500 uppercase">Avg Availability</h3>
+                    <p class="text-2xl font-bold text-gray-900 mt-2" x-text="overview.avgDispo + '%'"></p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+                    <h3 class="text-sm font-medium text-gray-500 uppercase">Total Data Traffic</h3>
+                    <p class="text-2xl font-bold text-gray-900 mt-2" x-text="overview.totalData + ' TB'"></p>
+                </div>
+            </div>
+
+            <!-- Charts -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">QoS Trends (Blocage & Coupure)</h3>
+                    <div class="h-64"><canvas id="qosChart"></canvas></div>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Traffic Evolution</h3>
+                    <div class="h-64"><canvas id="trafficChart"></canvas></div>
+                </div>
+            </div>
         </div>
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">Traffic Evolution</h3>
-            <canvas id="trafficChart"></canvas>
+
+        <!-- 2. OPERATIONAL MODE -->
+        <div x-show="mode === 'operational'" x-cloak>
+            <div class="mb-6 bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                <p class="text-sm text-yellow-800"><span class="font-bold">Focus:</span> Prioritize today's interventions based on worst performing sites.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Worst Offenders -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-red-700">🚨 Top 10 Critical Sites</h3>
+                        <span class="text-xs font-mono bg-gray-100 px-2 py-1 rounded" x-text="'Date: ' + operational.latestDate"></span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left">Site</th>
+                                    <th class="px-4 py-2 text-left">Code</th>
+                                    <th class="px-4 py-2 text-right">Block %</th>
+                                    <th class="px-4 py-2 text-right">Drop %</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <template x-for="site in operational.worstOffenders" :key="site.code">
+                                    <tr class="hover:bg-red-50">
+                                        <td class="px-4 py-2 font-medium" x-text="site.site_name"></td>
+                                        <td class="px-4 py-2 text-gray-500" x-text="site.code"></td>
+                                        <td class="px-4 py-2 text-right font-bold text-red-600" x-text="site.taux_blocage.toFixed(2)"></td>
+                                        <td class="px-4 py-2 text-right font-bold text-yellow-600" x-text="site.taux_coupure.toFixed(2)"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <div x-show="operational.worstOffenders.length === 0" class="text-center py-4 text-gray-500">No critical alerts found.</div>
+                    </div>
+                </div>
+
+                <!-- Zero Traffic / Sleeping Cells -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                     <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-700">💤 Zero Traffic / Sleeping Cells</h3>
+                         <span class="text-xs text-gray-500">Dispo < 100% & 0 Traffic</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-2 text-left">Site</th>
+                                    <th class="px-4 py-2 text-left">Code</th>
+                                    <th class="px-4 py-2 text-right">Availability</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100">
+                                <template x-for="site in operational.zeroTraffic" :key="site.code">
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-2 font-medium" x-text="site.site_name"></td>
+                                        <td class="px-4 py-2 text-gray-500" x-text="site.code"></td>
+                                        <td class="px-4 py-2 text-right text-red-500" x-text="site.taux_disponibilite.toFixed(2) + '%'"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                         <div x-show="operational.zeroTraffic.length === 0" class="text-center py-4 text-green-600">All active sites are carrying traffic.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. TACTICAL MODE -->
+        <div x-show="mode === 'tactical'" x-cloak>
+             <div class="mb-6 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <p class="text-sm text-blue-800"><span class="font-bold">Focus:</span> Analyze equipment performance and capacity bottlenecks.</p>
+            </div>
+             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Supplier Benchmarking -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Hardware Performance by Supplier</h3>
+                    <div class="h-64"><canvas id="supplierChart"></canvas></div>
+                </div>
+                <!-- Congestion Scatter -->
+                 <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Congestion Analysis (Traffic vs Blocking)</h3>
+                    <div class="h-64"><canvas id="congestionChart"></canvas></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. STRATEGIC MODE -->
+        <div x-show="mode === 'strategic'" x-cloak>
+            <div class="mb-6 bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <p class="text-sm text-purple-800"><span class="font-bold">Focus:</span> Long-term investment planning and technology shifts.</p>
+            </div>
+             <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Data Growth -->
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Data Growth Trend</h3>
+                    <div class="h-64"><canvas id="growthChart"></canvas></div>
+                </div>
+                <!-- Voice vs Data -->
+                 <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Technology Mix (Voice vs Data)</h3>
+                    <div class="h-64"><canvas id="mixChart"></canvas></div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -56,62 +192,173 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('alpine:init', () => {
-        Alpine.data('kpiStats', () => ({
-            stats: {
-                avgBlocage: '0.00',
-                avgCoupure: '0.00',
-                avgDispo: '0.00',
-                totalData: '0.00'
+        Alpine.data('advancedDashboard', () => ({
+            mode: 'overview',
+            charts: {},
+            
+            // Data buckets
+            overview: { avgBlocage: '0.00', avgCoupure: '0.00', avgDispo: '0.00', totalData: '0.00' },
+            operational: { latestDate: '', worstOffenders: [], zeroTraffic: [] },
+            
+            init() {
+                this.loadData('overview');
             },
-            async init() {
-                const response = await fetch('/api/kpi_data');
-                const data = await response.json();
+
+            async setMode(m) {
+                this.mode = m;
+                // Destroy old charts to prevent canvas reuse errors
+                Object.values(this.charts).forEach(c => c.destroy());
+                this.charts = {};
                 
-                if(data.blocage.length > 0) {
-                    this.stats.avgBlocage = (data.blocage.reduce((a,b)=>a+b,0) / data.blocage.length).toFixed(2);
-                    this.stats.avgCoupure = (data.coupure.reduce((a,b)=>a+b,0) / data.coupure.length).toFixed(2);
-                    this.stats.avgDispo = (data.dispo.reduce((a,b)=>a+b,0) / data.dispo.length).toFixed(2);
-                    this.stats.totalData = (data.data.reduce((a,b)=>a+b,0) / 1024).toFixed(2); // Convert GB to TB
+                await this.loadData(m);
+            },
+
+            async loadData(mode) {
+                const response = await fetch(`/api/kpi_data?mode=${mode}`);
+                const data = await response.json();
+
+                if (mode === 'overview') {
+                    this.renderOverview(data);
+                } else if (mode === 'operational') {
+                    this.operational.latestDate = data.latest_date || 'N/A';
+                    this.operational.worstOffenders = data.worst_offenders;
+                    this.operational.zeroTraffic = data.zero_traffic;
+                } else if (mode === 'tactical') {
+                    // Small timeout to allow x-show to render canvas
+                    setTimeout(() => this.renderTactical(data), 50);
+                } else if (mode === 'strategic') {
+                    setTimeout(() => this.renderStrategic(data), 50);
+                }
+            },
+
+            renderOverview(data) {
+                // Calculate Stats
+                 if(data.blocage && data.blocage.length > 0) {
+                    this.overview.avgBlocage = (data.blocage.reduce((a,b)=>a+b,0) / data.blocage.length).toFixed(2);
+                    this.overview.avgCoupure = (data.coupure.reduce((a,b)=>a+b,0) / data.coupure.length).toFixed(2);
+                    this.overview.avgDispo = (data.dispo.reduce((a,b)=>a+b,0) / data.dispo.length).toFixed(2);
+                    this.overview.totalData = (data.data.reduce((a,b)=>a+b,0) / 1024).toFixed(2);
                 }
 
-                // Render Charts
-                this.renderCharts(data);
-            },
-            renderCharts(data) {
                 // QoS Chart
-                new Chart(document.getElementById('qosChart'), {
+                this.charts.qos = new Chart(document.getElementById('qosChart'), {
                     type: 'line',
                     data: {
                         labels: data.dates,
                         datasets: [{
-                            label: 'Taux Blocage (%)',
+                            label: 'Block %',
                             data: data.blocage,
                             borderColor: 'rgb(239, 68, 68)',
                             tension: 0.1
                         }, {
-                            label: 'Taux Coupure (%)',
+                            label: 'Drop %',
                             data: data.coupure,
                             borderColor: 'rgb(234, 179, 8)',
                             tension: 0.1
                         }]
                     },
-                    options: { responsive: true }
+                    options: { responsive: true, maintainAspectRatio: false }
                 });
 
                 // Traffic Chart
-                new Chart(document.getElementById('trafficChart'), {
+                this.charts.traffic = new Chart(document.getElementById('trafficChart'), {
                     type: 'bar',
                     data: {
                         labels: data.dates,
                         datasets: [{
-                            label: 'Data Traffic (Go)',
+                            label: 'Data (GB)',
                             data: data.data,
-                            backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                            borderColor: 'rgb(59, 130, 246)',
-                            borderWidth: 1
+                            backgroundColor: 'rgba(59, 130, 246, 0.5)'
                         }]
                     },
-                    options: { responsive: true }
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            },
+
+            renderTactical(data) {
+                // Supplier Chart
+                const suppliers = data.suppliers.map(s => s.supplier);
+                const dispos = data.suppliers.map(s => s.avg_dispo);
+                this.charts.supplier = new Chart(document.getElementById('supplierChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: suppliers,
+                        datasets: [{
+                            label: 'Avg Availability %',
+                            data: dispos,
+                            backgroundColor: ['#3b82f6', '#10b981', '#f59e0b']
+                        }]
+                    },
+                    options: { 
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: { min: 95 } } // Zoom in on high availability
+                    }
+                });
+
+                // Congestion Scatter
+                this.charts.congestion = new Chart(document.getElementById('congestionChart'), {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Traffic vs Blocking',
+                            data: data.congestion, // {x: traffic, y: block}
+                            backgroundColor: 'rgba(239, 68, 68, 0.6)'
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            x: { title: { display: true, text: 'Traffic (GB)' } },
+                            y: { title: { display: true, text: 'Blocking %' } }
+                        }
+                    }
+                });
+            },
+
+            renderStrategic(data) {
+                // Growth Trend
+                this.charts.growth = new Chart(document.getElementById('growthChart'), {
+                    type: 'line',
+                    data: {
+                        labels: data.dates,
+                        datasets: [{
+                            label: 'Data Traffic Trend',
+                            data: data.data_traffic,
+                            borderColor: '#8b5cf6',
+                            fill: true,
+                            backgroundColor: 'rgba(139, 92, 246, 0.1)'
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+
+                // Mix
+                this.charts.mix = new Chart(document.getElementById('mixChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.dates,
+                        datasets: [
+                            {
+                                label: 'Voice (Erlang)',
+                                data: data.voice_traffic,
+                                backgroundColor: '#6b7280',
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Data (GB)',
+                                data: data.data_traffic,
+                                backgroundColor: '#3b82f6',
+                                yAxisID: 'y1'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            y: { type: 'linear', display: true, position: 'left' },
+                            y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } }
+                        }
+                    }
                 });
             }
         }))

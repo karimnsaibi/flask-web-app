@@ -98,3 +98,69 @@ def site_info():
 
     # Only return codes. Delegations are handled in frontend.
     return jsonify({"codes": codes})
+
+
+@manage_site_bp.route('/doc')
+def site_documentation():
+    return render_template('site_documentation.html')
+
+@manage_site_bp.route('/dashboard_site')
+def site_dashboard():
+    return render_template('site_dashboard.html')
+
+@manage_site_bp.route('/api/site_inventory')
+def site_inventory_api():
+    conn = get_db_connection()
+    
+    # Supplier Stats
+    suppliers = conn.execute('SELECT supplier, COUNT(*) as count FROM site GROUP BY supplier').fetchall()
+    
+    # Region Stats
+    regions = conn.execute('SELECT region, COUNT(*) as count FROM site GROUP BY region ORDER BY count DESC').fetchall()
+    
+    # Access Type Stats
+    access_types = conn.execute('SELECT access, COUNT(*) as count FROM site GROUP BY access').fetchall()
+    
+    conn.close()
+    
+    return jsonify({
+        'suppliers': [dict(row) for row in suppliers],
+        'regions': [dict(row) for row in regions],
+        'access_types': [dict(row) for row in access_types]
+    })
+
+
+@manage_site_bp.route('/view-sites')
+def view_sites():
+    conn = get_db_connection()
+    # Fetch all sites to display in table
+    sites = conn.execute('SELECT * FROM site').fetchall()
+    conn.close()
+    return render_template('view_sites.html', sites=sites)
+
+@manage_site_bp.route('/add-site', methods=['GET', 'POST'])
+def add_site_route():
+    conn = get_db_connection()
+    governorates = ['Ariana','Béja','Ben Arous','Bizerte','Gabès','Gafsa',\
+                    'Jendouba','Kairouan','Kasserine','Kebili','Kef','Mahdia',\
+                    'Manouba','Médenine','Monastir','Nabeul','Sfax','Sidi Bouzid',\
+                    'Siliana','Sousse','Tataouine','Tozeur','Tunis','Zaghouan']
+    
+    if request.method == 'POST':
+        data = request.form.to_dict()
+        # Ensure site_code is present (might be called 'site_code' or 'code')
+        # The form in templates usually uses 'site_code'
+        
+        success, message = add_site(conn, data)
+        conn.close()
+        
+        if success:
+            flash(message, 'success')
+            return redirect(url_for('manage_site.view_sites')) # Redirect to list after add
+        else:
+            flash(message, 'error')
+            # Stay on page to retry
+            return render_template('add_site.html', governorates=governorates)
+
+    conn.close()
+    return render_template('add_site.html', governorates=governorates)
