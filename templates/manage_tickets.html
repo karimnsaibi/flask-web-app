@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}Manage Tickets{% endblock %}
+
+{% block content %}
+<div class="pt-28 pb-12 px-6 max-w-7xl mx-auto">
+    
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-[#1b1464]">Intervention Tickets</h1>
+            <p class="text-gray-600 mt-2">
+                {% if session.profile == 'technician' %}
+                    View tickets assigned to you.
+                {% else %}
+                    Create and manage work orders for field technicians.
+                {% endif %}
+            </p>
+        </div>
+        {% if session.profile in ['engineer', 'administrator'] %}
+        <button onclick="document.getElementById('createTicketModal').classList.remove('hidden')" class="px-4 py-2 bg-[#1b1464] text-white rounded-lg hover:bg-blue-900 transition shadow flex items-center">
+            <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            New Ticket
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Ticket List -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="min-w-full text-sm text-left">
+            <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
+                <tr>
+                    <th class="px-6 py-3">ID</th>
+                    <th class="px-6 py-3">Site</th>
+                    <th class="px-6 py-3">Title</th>
+                    <th class="px-6 py-3">Priority</th>
+                    <th class="px-6 py-3">Status</th>
+                    <th class="px-6 py-3">Assignee</th>
+                    <th class="px-6 py-3">Created</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for ticket in tickets %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 font-mono text-gray-500">#{{ ticket.id }}</td>
+                    <td class="px-6 py-4 font-medium">{{ ticket.site_name }} ({{ ticket.code }})</td>
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-gray-900">{{ ticket.title }}</div>
+                        <div class="text-xs text-gray-500 truncate max-w-xs">{{ ticket.description }}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            {% if ticket.priority == 'High' %}bg-red-100 text-red-800
+                            {% elif ticket.priority == 'Medium' %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {{ ticket.priority }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                            {% if ticket.status == 'Open' %}bg-blue-100 text-blue-800
+                            {% elif ticket.status == 'Resolved' %}bg-purple-100 text-purple-800
+                            {% elif ticket.status == 'Closed' %}bg-gray-100 text-gray-800
+                            {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                            {{ ticket.status }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-gray-600">{{ ticket.technician_name }}</td>
+                    <td class="px-6 py-4 text-gray-500">{{ ticket.created_at[:10] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if tickets|length == 0 %}
+            <div class="text-center py-12 text-gray-500">No tickets found.</div>
+        {% endif %}
+    </div>
+
+    <!-- Create Ticket Modal -->
+    <div id="createTicketModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full p-6">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-lg font-bold text-gray-900">Create New Ticket</h3>
+                <button onclick="document.getElementById('createTicketModal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">&times;</button>
+            </div>
+            
+            <form method="POST">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Target Site</label>
+                        <select name="site_id" required class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                            {% for site in sites %}
+                            <option value="{{ site.id }}">{{ site.site_name }} ({{ site.code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Assign Technician</label>
+                         <select name="technician_id" required class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                            {% for tech in technicians %}
+                            <option value="{{ tech.id }}">{{ tech.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                        <input type="text" name="title" required class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                        <textarea name="description" rows="3" required class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"></textarea>
+                    </div>
+                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                         <select name="priority" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" onclick="document.getElementById('createTicketModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-[#1b1464] text-white rounded-lg hover:bg-blue-900 shadow">Create Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

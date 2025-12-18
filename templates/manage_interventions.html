@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}My Interventions{% endblock %}
+
+{% block content %}
+<div class="pt-28 pb-12 px-6 max-w-7xl mx-auto" x-data="{ activeTab: 'pending' }">
+
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-[#1b1464]">Intervention Management</h1>
+        <p class="text-gray-600 mt-2">Track work execution and quality assurance.</p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex space-x-4 border-b border-gray-200 mb-6">
+        <button @click="activeTab = 'pending'" :class="{'border-blue-600 text-blue-600': activeTab === 'pending', 'border-transparent text-gray-500 hover:text-gray-700': activeTab !== 'pending'}" class="pb-3 px-4 border-b-2 font-medium transition">
+             {% if session.profile == 'technician' %}To Do Tasks{% else %}Completed (Review Needed){% endif %}
+        </button>
+        <button @click="activeTab = 'history'" :class="{'border-blue-600 text-blue-600': activeTab === 'history', 'border-transparent text-gray-500 hover:text-gray-700': activeTab !== 'history'}" class="pb-3 px-4 border-b-2 font-medium transition">
+            Intervention History
+        </button>
+    </div>
+
+    <!-- TAB 1: PENDING ACTIONS -->
+    <div x-show="activeTab === 'pending'">
+        
+        {% if session.profile == 'technician' %}
+            <!-- TECHNICIAN: OPEN TICKETS TO WORK ON -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {% for ticket in open_tickets %}
+                <div class="bg-white rounded-lg shadow-md p-6 border-l-4 border-yellow-400">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-xs font-bold text-gray-400">#{{ ticket.id }}</span>
+                        <span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full font-bold">{{ ticket.priority }}</span>
+                    </div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-1">{{ ticket.title }}</h3>
+                    <p class="text-sm text-blue-600 font-medium mb-3">{{ ticket.site_name }} ({{ ticket.code }})</p>
+                    <p class="text-gray-600 text-sm mb-4 line-clamp-3">{{ ticket.description }}</p>
+                    
+                    <button onclick="openLogModal('{{ ticket.id }}', '{{ ticket.title }}')" class="w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Log Work Done</button>
+                </div>
+                {% endfor %}
+            </div>
+             {% if open_tickets|length == 0 %}
+                <div class="text-center py-12 bg-white rounded-lg border border-dashed border-gray-300 text-gray-500">No pending tickets assigned to you. Great job!</div>
+            {% endif %}
+
+        {% else %}
+             <!-- ENGINEER: COMPLETED INTERVENTIONS -->
+              <div class="bg-white rounded-lg shadow overflow-hidden">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
+                        <tr>
+                            <th class="px-6 py-3">Date</th>
+                            <th class="px-6 py-3">Site</th>
+                            <th class="px-6 py-3">Ticket</th>
+                            <th class="px-6 py-3">Technician</th>
+                            <th class="px-6 py-3">Work Log</th>
+                            <th class="px-6 py-3">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for item in interventions %}
+                        {% if not item.engineer_rating %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 text-gray-500">{{ item.date[:16] }}</td>
+                            <td class="px-6 py-4 font-medium">{{ item.site_name }}</td>
+                             <td class="px-6 py-4">{{ item.title }}</td>
+                            <td class="px-6 py-4 text-blue-600">{{ item.technician_name }}</td>
+                            <td class="px-6 py-4 text-gray-600 max-w-xs truncate">{{ item.details }}</td>
+                            <td class="px-6 py-4">
+                                <button onclick="openRateModal('{{ item.id }}', '{{ item.technician_name }}')" class="text-indigo-600 hover:text-indigo-900 font-medium">Rate Work</button>
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- TAB 2: HISTORY -->
+    <div x-show="activeTab === 'history'" x-cloak>
+         <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="min-w-full text-sm text-left">
+                <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
+                     <tr>
+                        <th class="px-6 py-3">Date</th>
+                        <th class="px-6 py-3">Ticket</th>
+                        {% if session.profile != 'technician' %}<th class="px-6 py-3">Technician</th>{% endif %}
+                        <th class="px-6 py-3">Work details</th>
+                        <th class="px-6 py-3">Rating</th>
+                         <th class="px-6 py-3">Comment</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for item in interventions %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 text-gray-500">{{ item.date[:10] }}</td>
+                        <td class="px-6 py-4 font-medium">{{ item.title }}</td>
+                         {% if session.profile != 'technician' %}<td class="px-6 py-4">{{ item.technician_name }}</td>{% endif %}
+                        <td class="px-6 py-4 text-gray-600 max-w-xs truncate">{{ item.details }}</td>
+                        <td class="px-6 py-4">
+                            {% if item.engineer_rating %}
+                                <div class="flex text-yellow-500">
+                                    {% for i in range(item.engineer_rating) %}★{% endfor %}
+                                    <span class="text-gray-400 text-xs ml-1">({{ item.engineer_rating }}/5)</span>
+                                </div>
+                            {% else %}
+                                <span class="text-gray-400 italic">Pending</span>
+                            {% endif %}
+                        </td>
+                         <td class="px-6 py-4 text-gray-500 text-xs">{{ item.engineer_comment or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- MODAL: LOG WORK (Technician) -->
+    <div id="logWorkModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Log Intervention</h3>
+            <p id="modalTicketTitle" class="text-sm text-gray-500 mb-4"></p>
+            <form method="POST">
+                <input type="hidden" name="action" value="log_work">
+                <input type="hidden" name="ticket_id" id="modalTicketId">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Work Performed</label>
+                    <textarea name="details" rows="4" required class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border" placeholder="Describe fixes applied..."></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="document.getElementById('logWorkModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Complete Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: RATE WORK (Engineer) -->
+     <div id="rateWorkModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 class="text-lg font-bold text-gray-900 mb-4">Rate Intervention</h3>
+            <p id="modalTechName" class="text-sm text-blue-600 font-medium mb-4"></p>
+            <form method="POST">
+                <input type="hidden" name="action" value="rate_work">
+                <input type="hidden" name="intervention_id" id="modalInterventionId">
+                
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Rating (1-5)</label>
+                    <select name="rating" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border">
+                        <option value="5">5 - Excellent</option>
+                        <option value="4">4 - Good</option>
+                        <option value="3">3 - Average</option>
+                        <option value="2">2 - Poor</option>
+                        <option value="1">1 - Terrible</option>
+                    </select>
+                </div>
+                 <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Comment</label>
+                   <textarea name="comment" rows="2" class="w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"></textarea>
+                </div>
+                
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="document.getElementById('rateWorkModal').classList.add('hidden')" class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">Cancel</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">Submit Rating</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function openLogModal(id, title) {
+        document.getElementById('modalTicketId').value = id;
+        document.getElementById('modalTicketTitle').textContent = 'Ticket: ' + title;
+        document.getElementById('logWorkModal').classList.remove('hidden');
+    }
+    function openRateModal(id, techName) {
+        document.getElementById('modalInterventionId').value = id;
+        document.getElementById('modalTechName').textContent = 'Technician: ' + techName;
+        document.getElementById('rateWorkModal').classList.remove('hidden');
+    }
+</script>
+{% endblock %}

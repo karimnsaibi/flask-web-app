@@ -59,6 +59,9 @@ def manage_site():
         action = data['action']
 
         if action == 'add':
+            if 'site_code' not in data or not data['site_code']:
+                flash('Error: No site code selected. Please generate site codes first.', 'error')
+                return redirect(url_for('manage_site.manage_site'))
             success, message = add_site(conn, data)
         elif action == 'edit':
             success, message = edit_site(conn, data)
@@ -150,6 +153,9 @@ def add_site_route():
         data = request.form.to_dict()
         # Ensure site_code is present (might be called 'site_code' or 'code')
         # The form in templates usually uses 'site_code'
+        if 'site_code' not in data or not data['site_code']:
+            flash('Error: No site code selected. Please generate site codes first.', 'error')
+            return render_template('add_site.html', governorates=governorates)
         
         success, message = add_site(conn, data)
         conn.close()

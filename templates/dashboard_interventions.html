@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Intervention Dashboard{% endblock %}
+
+{% block content %}
+<div class="pt-28 pb-12 px-6 max-w-7xl mx-auto" x-data="interventionStats()">
+    
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-[#1b1464]">Intervention Dashboard</h1>
+        <p class="text-gray-600 mt-2">KPIs for Field Operations and Technician Performance.</p>
+    </div>
+
+    <!-- Overview Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-blue-500">
+            <h3 class="text-sm font-medium text-gray-500 uppercase">Total Tickets</h3>
+            <p class="text-3xl font-bold text-gray-900 mt-2" x-text="totalTickets"></p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-green-500">
+            <h3 class="text-sm font-medium text-gray-500 uppercase">Resolved Rate</h3>
+            <p class="text-3xl font-bold text-gray-900 mt-2" x-text="resolvedRate + '%'"></p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md border-l-4 border-purple-500">
+            <h3 class="text-sm font-medium text-gray-500 uppercase">Avg Satisfaction</h3>
+            <p class="text-3xl font-bold text-gray-900 mt-2" x-text="avgRating + '/5'"></p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Ticket Status Chart -->
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Ticket Status Distribution</h3>
+            <div class="h-64 flex justify-center">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Priority Chart -->
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+             <h3 class="text-lg font-bold text-gray-800 mb-4">Tickets by Priority</h3>
+             <div class="h-64 flex justify-center">
+                <canvas id="priorityChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Top Technicians Table -->
+        <div class="bg-white p-6 rounded-lg shadow-lg md:col-span-2">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">Top Performing Technicians</h3>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3">Technician</th>
+                            <th class="px-6 py-3">Resolved Tickets</th>
+                            <th class="px-6 py-3">Avg Rating</th>
+                            <th class="px-6 py-3">Performance</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <template x-for="tech in topTechs" :key="tech.name">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 font-bold text-gray-700" x-text="tech.name"></td>
+                                <td class="px-6 py-4" x-text="tech.resolved_count"></td>
+                                <td class="px-6 py-4 text-yellow-500 font-bold" x-text="tech.avg_rating ? tech.avg_rating.toFixed(1) : '-'"></td>
+                                <td class="px-6 py-4">
+                                     <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                                        <div class="bg-blue-600 h-2.5 rounded-full" :style="'width: ' + (tech.avg_rating * 20) + '%'"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('interventionStats', () => ({
+            totalTickets: 0,
+            resolvedRate: 0,
+            avgRating: 0,
+            topTechs: [],
+            
+            async init() {
+                const response = await fetch('/api/intervention_stats');
+                const data = await response.json();
+                
+                // Helper to count stats
+                const counts = data.status_dist.reduce((acc, curr) => {
+                    acc[curr.status] = curr.count;
+                    return acc;
+                }, {});
+                
+                this.totalTickets = Object.values(counts).reduce((a,b)=>a+b, 0);
+                const resolved = (counts['Resolved'] || 0) + (counts['Closed'] || 0);
+                this.resolvedRate = this.totalTickets ? Math.round((resolved / this.totalTickets) * 100) : 0;
+                
+                // Calc Avg Rating
+                const ratedTechs = data.top_techs.filter(t => t.avg_rating);
+                const sumRating = ratedTechs.reduce((a,b) => a + b.avg_rating, 0);
+                this.avgRating = ratedTechs.length ? (sumRating / ratedTechs.length).toFixed(1) : '-';
+                
+                this.topTechs = data.top_techs;
+                
+                this.renderCharts(data);
+            },
+            
+            renderCharts(data) {
+                // Status Chart (Doughnut)
+                new Chart(document.getElementById('statusChart'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.status_dist.map(d => d.status),
+                        datasets: [{
+                            data: data.status_dist.map(d => d.count),
+                            backgroundColor: ['#3b82f6', '#10b981', '#6b7280', '#f59e0b']
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+                
+                // Priority Chart (Bar)
+                new Chart(document.getElementById('priorityChart'), {
+                    type: 'bar',
+                    data: {
+                        labels: data.priority_dist.map(d => d.priority),
+                        datasets: [{
+                            label: 'Tickets',
+                            data: data.priority_dist.map(d => d.count),
+                            backgroundColor: ['#10b981', '#f59e0b', '#ef4444'] // Green Low, Yellow Med, Red High
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            }
+        }))
+    })
+</script>
+{% endblock %}

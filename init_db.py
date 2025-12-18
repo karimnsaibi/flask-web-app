@@ -81,6 +81,37 @@ def init_db():
   end_code INTEGER NOT NULL
   )''')
 
+    # Tickets Table
+    cur.execute('''
+    CREATE TABLE tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        site_id INTEGER NOT NULL,
+        engineer_id INTEGER NOT NULL,
+        technician_id INTEGER NOT NULL,
+        title TEXT NOT NULL,
+        description TEXT,
+        priority TEXT DEFAULT 'Medium',
+        status TEXT DEFAULT 'Open',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY(site_id) REFERENCES site(id),
+        FOREIGN KEY(engineer_id) REFERENCES users(id),
+        FOREIGN KEY(technician_id) REFERENCES users(id)
+    )''')
+
+    # Interventions Table
+    cur.execute('''
+    CREATE TABLE interventions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER NOT NULL,
+        technician_id INTEGER NOT NULL,
+        date DATETIME DEFAULT CURRENT_TIMESTAMP,
+        details TEXT NOT NULL,
+        engineer_rating INTEGER, -- 1 to 5
+        engineer_comment TEXT,
+        FOREIGN KEY(ticket_id) REFERENCES tickets(id),
+        FOREIGN KEY(technician_id) REFERENCES users(id)
+    )''')
+
     
     conn.commit()
     conn.close()
