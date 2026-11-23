@@ -4,11 +4,17 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 import os
 
-# Email configuration (use environment variables in production)
-SMTP_SERVER = "smtp.gmail.com"  # For Gmail (or your SMTP provider)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# Email configuration: set these in a local .env file (never committed), see .env.example
+SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
-SENDER_EMAIL = os.getenv("EMAIL_USER", "mohamedkarimnsaibi@gmail.com")  # Use environment variables
-SENDER_PASSWORD = os.getenv("EMAIL_PASSWORD", "okta ahws cgti vlib")  # App password for Gmail
+SENDER_EMAIL = os.getenv("EMAIL_USER")
+SENDER_PASSWORD = os.getenv("EMAIL_PASSWORD")  # Gmail app password
 
 def send_email(to_email, subject, body_html):
     """Send an HTML email with the given content"""

@@ -11,8 +11,9 @@ from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# connect database
-app.secret_key = 'tunisie_telecom_dashboard'
+# Session signing key: read from .env (loaded in email_utils); random fallback for local runs
+import os, secrets
+app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
 
 from routes.authentification import auth_bp
 app.register_blueprint(auth_bp)
