@@ -14,7 +14,8 @@ def add_site(conn, data):
         return False, 'Site already exists'
 
     conn.execute('''
-        INSERT INTO site VALUES (NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO site (region, code, delegation, site_name, x, y, hba, supplier, access, antenna, surface)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         data['region'], data['site_code'], data['delegation'], data['site_name'],
         data['x'], data['y'], data['hba'], data['supplier'], 

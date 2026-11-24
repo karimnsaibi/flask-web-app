@@ -30,10 +30,17 @@ def add_kpi():
         trafic_volte = request.form['trafic_volte']
         
         try:
+            # One row per site per day: logging the same day again corrects it.
             conn.execute('''
-                INSERT INTO kpi_stats (site_id, date, taux_blocage, taux_coupure, taux_disponibilite, 
+                INSERT INTO kpi_stats (site_id, date, taux_blocage, taux_coupure, taux_disponibilite,
                                      trafic_voix_erlang, trafic_data_go, trafic_volte_go)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT (site_id, date) DO UPDATE SET
+                    taux_blocage = EXCLUDED.taux_blocage, taux_coupure = EXCLUDED.taux_coupure,
+                    taux_disponibilite = EXCLUDED.taux_disponibilite,
+                    trafic_voix_erlang = EXCLUDED.trafic_voix_erlang,
+                    trafic_data_go = EXCLUDED.trafic_data_go, trafic_volte_go = EXCLUDED.trafic_volte_go,
+                    logged_at = now()
             ''', (site_id, date, taux_blocage, taux_coupure, taux_disponibilite, trafic_voix, trafic_data, trafic_volte))
             conn.commit()
             flash('KPI data logged successfully', 'success')
@@ -173,7 +180,7 @@ def download_powerbi_data():
     if rows:
         writer.writerow(rows[0].keys()) # Header
         for row in rows:
-            writer.writerow(list(row))
+            writer.writerow(list(row.values()))
             
     return Response(
         output.getvalue(),

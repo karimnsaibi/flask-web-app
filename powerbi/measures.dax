@@ -1,0 +1,92 @@
+// ============================================================================
+// DAX measures for the Network Operations report.
+// Create a table named "_Measures" (Home > Enter data > one empty column > Load),
+// then for each block: Modeling > New measure, paste ONE measure, set the format.
+// All measures work in DirectQuery mode.
+// ============================================================================
+
+// ---------- Network quality (table: fact_kpi_daily) ----------
+
+Avg Availability % =
+AVERAGE ( fact_kpi_daily[availability_pct] )
+// Format: decimal, 2 decimals
+
+Avg Blocking Rate % =
+AVERAGE ( fact_kpi_daily[blocking_rate_pct] )
+
+Avg Drop Rate % =
+AVERAGE ( fact_kpi_daily[drop_rate_pct] )
+
+Site-Days Measured =
+COUNTROWS ( fact_kpi_daily )
+
+SLA Breach Days =
+CALCULATE ( COUNTROWS ( fact_kpi_daily ), fact_kpi_daily[availability_breach] = TRUE () )
+
+SLA Compliance % =
+1 - DIVIDE ( [SLA Breach Days], [Site-Days Measured] )
+// Format: percentage, 1 decimal. SLA = availability >= 99 % on a given day.
+
+Quality Breach Days =
+CALCULATE ( COUNTROWS ( fact_kpi_daily ), fact_kpi_daily[quality_breach] = TRUE () )
+// blocking > 2 % or drop > 1 %
+
+Sites Reporting =
+DISTINCTCOUNT ( fact_kpi_daily[site_id] )
+
+// ---------- Traffic ----------
+
+Data Traffic (TB) =
+DIVIDE ( SUM ( fact_kpi_daily[data_traffic_gb] ), 1024 )
+
+Voice Traffic (Erl) =
+SUM ( fact_kpi_daily[voice_traffic_erl] )
+
+VoLTE Share % =
+DIVIDE ( SUM ( fact_kpi_daily[volte_traffic_gb] ), SUM ( fact_kpi_daily[data_traffic_gb] ) )
+// Format: percentage
+
+Data Traffic Prev Month (TB) =
+CALCULATE ( [Data Traffic (TB)], DATEADD ( dim_date[date], -1, MONTH ) )
+
+Data Traffic MoM % =
+DIVIDE ( [Data Traffic (TB)] - [Data Traffic Prev Month (TB)], [Data Traffic Prev Month (TB)] )
+// Needs dim_date marked as date table. Format: percentage
+
+// ---------- Live / today ----------
+
+Last KPI Logged =
+MAX ( fact_kpi_daily[logged_at] )
+// Format: date time. Shows the report is live.
+
+Availability Today % =
+CALCULATE ( [Avg Availability %], dim_date[date] = TODAY () )
+
+Sites Degraded Today =
+CALCULATE (
+    DISTINCTCOUNT ( fact_kpi_daily[site_id] ),
+    dim_date[date] = TODAY (),
+    fact_kpi_daily[availability_breach] = TRUE ()
+)
+
+// ---------- Maintenance (table: fact_ticket) ----------
+
+Tickets =
+COUNTROWS ( fact_ticket )
+
+Open Tickets =
+CALCULATE ( COUNTROWS ( fact_ticket ), fact_ticket[is_open] = TRUE () )
+
+High Priority Open =
+CALCULATE ( [Open Tickets], fact_ticket[priority] = "High" )
+
+Resolved Tickets =
+CALCULATE ( COUNTROWS ( fact_ticket ), NOT ISBLANK ( fact_ticket[resolved_at] ) )
+
+MTTR (h) =
+AVERAGE ( fact_ticket[resolution_hours] )
+// Mean time to repair, hours. Format: 1 decimal
+
+Avg Engineer Rating =
+AVERAGE ( fact_ticket[engineer_rating] )
+// out of 5

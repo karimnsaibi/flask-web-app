@@ -1,7 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session
 from db import get_db_connection
-import sqlite3
-from datetime import datetime
 
 interventions_bp = Blueprint('interventions', __name__)
 
@@ -13,8 +11,7 @@ def manage_tickets():
         return redirect(url_for('auth.login'))
         
     conn = get_db_connection()
-    conn.row_factory = lambda cursor, row: dict(sqlite3.Row(cursor, row))
-    
+
     if request.method == 'POST':
         # Create Ticket (Engineer only)
         if session['profile'] in ['engineer', 'administrator']:
@@ -43,14 +40,14 @@ def manage_tickets():
         JOIN users u_tech ON t.technician_id = u_tech.id
     '''
     
+    params = ()
     if session['profile'] == 'technician':
-        # Get technician ID from session
-        tech_id = session['user_id']
-        query += f" WHERE t.technician_id = {tech_id}"
+        query += " WHERE t.technician_id = ?"
+        params = (session['user_id'],)
 
     query += " ORDER BY t.created_at DESC"
-    
-    tickets = conn.execute(query).fetchall()
+
+    tickets = conn.execute(query, params).fetchall()
     
     # Helper data for forms (Sites & Technicians)
     sites = conn.execute('SELECT id, site_name, code FROM site').fetchall()
@@ -98,7 +95,7 @@ def manage_interventions():
             # Verify if ticket should be Closed completely
             intervention = conn.execute('SELECT ticket_id FROM interventions WHERE id = ?', (intervention_id,)).fetchone()
             if intervention:
-                 conn.execute("UPDATE tickets SET status = 'Closed' WHERE id = ?", (intervention[0],))
+                 conn.execute("UPDATE tickets SET status = 'Closed' WHERE id = ?", (intervention['ticket_id'],))
                  
             conn.commit()
             flash('Intervention rated successfully.', 'success')
@@ -149,7 +146,7 @@ def manage_interventions():
 def dashboard_intervention():
     if 'profile' not in session or session['profile'] not in ['administrator', 'engineer', 'manager']:
          flash('Access denied', 'error')
-         return redirect(url_for('main'))
+         return redirect(url_for('auth.main'))
          
     return render_template('dashboard_interventions.html')
 

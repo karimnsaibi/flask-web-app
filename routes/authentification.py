@@ -1,34 +1,41 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, Blueprint
-import sqlite3
-import re
-from email_validator import validate_email, EmailNotValidError
-from werkzeug.security import generate_password_hash, check_password_hash
+import os
+import secrets
 from datetime import datetime, timedelta
-from email_utils import send_activation_email, send_email
 from urllib.parse import quote
-from datetime import datetime, timedelta
-from auth_utils import generate_activation_token
+
+from email_validator import validate_email, EmailNotValidError
+from flask import render_template, request, redirect, url_for, flash, session, Blueprint
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from auth_utils import generate_activation_token, send_activation_email
 from db import get_db_connection
+from email_utils import send_email
 
 auth_bp = Blueprint('auth', __name__)
+
+# Email activation + two-factor authentication need a working Gmail app password.
+# Off by default so the app runs locally without email; set ENABLE_EMAIL_2FA=true in .env.
+EMAIL_2FA = os.getenv('ENABLE_EMAIL_2FA', 'false').lower() == 'true'
+
+
+def _new_2fa_code():
+    return f"{secrets.randbelow(1_000_000):06d}"
+
 
 @auth_bp.route('/')
 def home():
     return render_template('login.html')
 
+
 @auth_bp.route('/signup')
 def signup():
-    return render_template('signup.html')
+    return render_template('signup.html', email_enabled=EMAIL_2FA)
 
 
-
-@auth_bp.route('/activate/<token>')  # Ensure this matches your generated link
+@auth_bp.route('/activate/<token>')
 def activate_account(token):
     conn = get_db_connection()
-    user = conn.execute(
-        'SELECT * FROM users WHERE activation_token = ?', 
-        (token,)
-    ).fetchone()
+    user = conn.execute('SELECT * FROM users WHERE activation_token = ?', (token,)).fetchone()
 
     if not user:
         conn.close()
@@ -40,143 +47,104 @@ def activate_account(token):
         flash("Activation link has expired", "error")
         return redirect(url_for('auth.login'))
 
-    # Activate account
-    conn.execute('''
-        UPDATE users 
-        SET is_active = 1, activation_token = NULL 
-        WHERE id = ?
-    ''', (user['id'],))
+    conn.execute('UPDATE users SET is_active = TRUE, activation_token = NULL WHERE id = ?', (user['id'],))
     conn.commit()
     conn.close()
-
     flash("Account activated successfully!", "success")
     return redirect(url_for('auth.login'))
 
 
-# Sign up route
 @auth_bp.route('/register', methods=['POST', 'GET'])
 def register():
-    if request.method == 'POST':
-        # Get form data
-        name = request.form['name']
-        # email = request.form['email']
-        user_id = request.form['user_id']
-        password = request.form['password']
-        password2 = request.form['password2']
-        profile = request.form['profile']  
+    if request.method != 'POST':
+        return render_template('signup.html', email_enabled=EMAIL_2FA)
 
-        # 1. Validate email format and existence
-        # try:
-        #     # This checks both format and DNS deliverability
-        #     valid = validate_email(email, check_deliverability=True)
-        #     email = valid.email  # Normalized email
-        # except EmailNotValidError as e:
-        #     flash(f"Invalid email address: {str(e)}", "error")
-        #     return redirect(url_for('auth.signup'))
+    name = request.form['name']
+    user_id = request.form['user_id']
+    password = request.form['password']
+    password2 = request.form['password2']
+    profile = request.form['profile']
+    email = None
 
-        # 2. Check if email/user_id already exists
-        conn = get_db_connection()
-        existing_user = conn.execute(
-            # 'SELECT * FROM users WHERE email = ? OR user_id = ?',
-            # (email, user_id)
-            'SELECT * FROM users WHERE user_id = ?',
-            (user_id,)
-        ).fetchone()
-        
-        if existing_user:
-            # conn.close()
-            # if existing_user['email'] == email:
-            #     flash("Email already registered", "error")
-            # else:
-            #     flash("User ID already taken", "error")
-            flash("User ID already taken", "error")
-            conn.close()
+    if EMAIL_2FA:
+        try:
+            email = validate_email(request.form.get('email', ''), check_deliverability=True).normalized
+        except EmailNotValidError as e:
+            flash(f"Invalid email address: {e}", "error")
             return redirect(url_for('auth.signup'))
-        if password != password2:
-            flash("Passwords do not match", "error")
-            conn.close()
-            return redirect(url_for('auth.signup'))
-        hashed_pw = generate_password_hash(password)
-        
-        # # Generate activation token
-        # activation_token = generate_activation_token()
-        # expiry = datetime.now() + timedelta(minutes=5)
 
-        # Store user with activation data
-        # conn.execute('''
-        #     INSERT INTO users (name, email, user_id, profile, password, 
-        #                     is_active, activation_token, token_expiry)
-        #     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        # ''', (name, email, user_id, profile, hashed_pw, False, activation_token, expiry))
-        # conn.commit()
+    if password != password2:
+        flash("Passwords do not match", "error")
+        return redirect(url_for('auth.signup'))
 
-        # # Send activation email
-        # activation_link = f"{request.host_url}activate/{quote(activation_token)}"
-        # send_activation_email(email, activation_link)
-        
-        # flash("Registration successful! Check your email to activate your account.", "success")
-        
-        # Store user with activation data
+    conn = get_db_connection()
+    existing = conn.execute('SELECT user_id, email FROM users WHERE user_id = ? OR (email IS NOT NULL AND email = ?)',
+                            (user_id, email)).fetchone()
+    if existing:
+        conn.close()
+        flash("Email already registered" if email and existing['email'] == email else "User ID already taken", "error")
+        return redirect(url_for('auth.signup'))
+
+    hashed_pw = generate_password_hash(password)
+
+    if EMAIL_2FA:
+        token = generate_activation_token()
         conn.execute('''
-         INSERT INTO users (name, user_id, profile, password)
-         VALUES (?, ?, ?, ?)
-        ''', (name, user_id, profile, hashed_pw))
+            INSERT INTO users (name, email, user_id, profile, password, is_active, activation_token, token_expiry)
+            VALUES (?, ?, ?, ?, ?, FALSE, ?, ?)
+        ''', (name, email, user_id, profile, hashed_pw, token, datetime.now() + timedelta(minutes=30)))
         conn.commit()
+        conn.close()
+        send_activation_email(email, f"{request.host_url}activate/{quote(token)}")
+        flash("Registration successful! Check your email to activate your account.", "success")
+    else:
+        conn.execute('INSERT INTO users (name, user_id, profile, password) VALUES (?, ?, ?, ?)',
+                     (name, user_id, profile, hashed_pw))
+        conn.commit()
+        conn.close()
         flash("Registration successful!", "success")
-        return redirect(url_for('auth.login'))
-    return render_template('signup.html')
+    return redirect(url_for('auth.login'))
 
-# Log in route
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
         return render_template('login.html')
 
-    # POST logic
-    # email = request.form['email']
     password = request.form['password']
     user_id = request.form['user_id']
 
     conn = get_db_connection()
-    # user = conn.execute('SELECT * FROM users WHERE email = ? or user_id = ?', (email, user_id)).fetchone()
     user = conn.execute('SELECT * FROM users WHERE user_id = ?', (user_id,)).fetchone()
-    conn.close()
 
-    if user:
-        # if not user['is_active']:
-        #     flash("Account not activated. Please check your email.", "error")
-        #     return redirect(url_for('auth.home'))
-        if check_password_hash(user['password'], password):
-            session['user_id'] = user['id']
-            session['profile'] = user['profile']
-            return redirect(url_for('auth.main'))
-            # # Generate 6-digit code
-            # import random
-            # code = f"{random.randint(100000, 999999)}"
-            # expiry = datetime.now() + timedelta(minutes=5)
-
-            # # Save code and expiry
-            # conn = get_db_connection()
-            # conn.execute(
-            #     'UPDATE users SET twofa_code = ?, twofa_expiry = ? WHERE id = ?',
-            #     (code, expiry.isoformat(), user['id'])
-            # )
-            # conn.commit()
-            # conn.close()
-
-            # # Send 2FA code via email
-            # send_email(user['email'], "Your 2FA Code", f"<p>Your 2FA verification code is: <strong>{code}</strong></p>")
-
-            # # Store user ID in session
-            # session['2fa_user_id'] = user['id']
-            # return redirect(url_for('auth.two_fa'))
-        flash("Invalid password", "error")
+    if not user or not check_password_hash(user['password'], password):
+        conn.close()
+        flash("Invalid user ID or password", "error")
         return redirect(url_for('auth.home'))
-    flash("Invalid user ID", "error")
-    return redirect(url_for('auth.home'))
+
+    if not user['is_active']:
+        conn.close()
+        flash("Account not activated. Please check your email.", "error")
+        return redirect(url_for('auth.home'))
+
+    if EMAIL_2FA and user['email']:
+        code = _new_2fa_code()
+        now = datetime.now()
+        conn.execute('UPDATE users SET twofa_code = ?, twofa_expiry = ?, last_2fa_sent = ? WHERE id = ?',
+                     (code, now + timedelta(minutes=5), now, user['id']))
+        conn.commit()
+        conn.close()
+        send_email(user['email'], "Your 2FA Code",
+                   f"<p>Your verification code is: <strong>{code}</strong></p>")
+        session['2fa_user_id'] = user['id']
+        return redirect(url_for('auth.two_fa'))
+
+    conn.close()
+    session['user_id'] = user['id']
+    session['profile'] = user['profile']
+    return redirect(url_for('auth.main'))
 
 
-# Two Factor Authentication route
 @auth_bp.route('/2fa', methods=['GET', 'POST'])
 def two_fa():
     if '2fa_user_id' not in session:
@@ -188,52 +156,22 @@ def two_fa():
 
         conn = get_db_connection()
         user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-
-        if user:
-            if (user['twofa_code'] == entered_code and 
-                datetime.now() < datetime.fromisoformat(user['twofa_expiry'])):
-                # Clear 2FA and grant access
-                conn.execute('''
-                    UPDATE users SET twofa_code = NULL, twofa_expiry = NULL WHERE id = ?
-                ''', (user_id,))
-                conn.commit()
-                conn.close()
-                session.pop('2fa_user_id')
-                session['user_id'] = user_id  # Mark user as logged in
-                return redirect(url_for('auth.main'))
-            else:
-                flash("Invalid or expired code", "error")
+        valid = (user and user['twofa_code'] and secrets.compare_digest(user['twofa_code'], entered_code)
+                 and datetime.now() < datetime.fromisoformat(user['twofa_expiry']))
+        if valid:
+            conn.execute('UPDATE users SET twofa_code = NULL, twofa_expiry = NULL WHERE id = ?', (user_id,))
+            conn.commit()
+            conn.close()
+            session.pop('2fa_user_id')
+            session['user_id'] = user_id
+            session['profile'] = user['profile']
+            return redirect(url_for('auth.main'))
         conn.close()
+        flash("Invalid or expired code", "error")
 
     return render_template('2fa.html')
 
 
-
-
-
-# Shell main page route
-@auth_bp.route('/main')
-def main():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.home'))
-    return render_template('main.html')
-
-
-# Helper function to print all users in the database
-def print_all_users():
-    conn = sqlite3.connect('your_database.db')  # Replace with your DB file name
-    conn.row_factory = sqlite3.Row  # So we can access columns by name
-    cursor = conn.cursor()
-
-    rows = cursor.execute('SELECT * FROM users').fetchall()
-
-    print("=== USERS TABLE ===")
-    for row in rows:
-        print(dict(row))  # Convert each row to a dictionary and print
-
-    conn.close()
-
-# Resend 2FA code route
 @auth_bp.route('/resend-2fa')
 def resend_2fa():
     if '2fa_user_id' not in session:
@@ -242,42 +180,42 @@ def resend_2fa():
     user_id = session['2fa_user_id']
     conn = get_db_connection()
     user = conn.execute('SELECT * FROM users WHERE id = ?', (user_id,)).fetchone()
-
     if not user:
         conn.close()
         flash("Session expired. Please log in again.", "error")
         return redirect(url_for('auth.home'))
 
-    # Rate limiting: block resending if last_2fa_sent was less than 30 seconds ago
+    # Rate limit: one code every 30 seconds
     now = datetime.now()
-    if user['last_2fa_sent']:
-        last_sent = datetime.fromisoformat(user['last_2fa_sent'])
-        if now < last_sent + timedelta(seconds=30):
-            conn.close()
-            flash("Please wait before requesting a new code.", "warning")
-            return redirect(url_for('auth.two_fa'))
+    if user['last_2fa_sent'] and now < datetime.fromisoformat(user['last_2fa_sent']) + timedelta(seconds=30):
+        conn.close()
+        flash("Please wait before requesting a new code.", "warning")
+        return redirect(url_for('auth.two_fa'))
 
-    # If the previous code is still valid, reuse it
-    if user['twofa_expiry'] and datetime.now() < datetime.fromisoformat(user['twofa_expiry']):
+    # Reuse the current code while it is still valid
+    if user['twofa_expiry'] and now < datetime.fromisoformat(user['twofa_expiry']):
         code = user['twofa_code']
     else:
-        # Generate new 6-digit code
-        import random
-        code = f"{random.randint(100000, 999999)}"
-        expiry = now + timedelta(minutes=5)
+        code = _new_2fa_code()
+        conn.execute('UPDATE users SET twofa_code = ?, twofa_expiry = ? WHERE id = ?',
+                     (code, now + timedelta(minutes=5), user_id))
 
-        conn.execute('''
-            UPDATE users SET twofa_code = ?, twofa_expiry = ? WHERE id = ?
-        ''', (code, expiry.isoformat(), user_id))
-        conn.commit()
-
-    # Send the email
     send_email(user['email'], "Your 2FA Code", f"<p>Your verification code is: <strong>{code}</strong></p>")
-
-    # Update last_2fa_sent
-    conn.execute('UPDATE users SET last_2fa_sent = ? WHERE id = ?', (now.isoformat(), user_id))
+    conn.execute('UPDATE users SET last_2fa_sent = ? WHERE id = ?', (now, user_id))
     conn.commit()
     conn.close()
-
     flash("A new verification code has been sent to your email.", "success")
     return redirect(url_for('auth.two_fa'))
+
+
+@auth_bp.route('/main')
+def main():
+    if 'user_id' not in session:
+        return redirect(url_for('auth.home'))
+    return render_template('main.html')
+
+
+@auth_bp.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('auth.home'))
